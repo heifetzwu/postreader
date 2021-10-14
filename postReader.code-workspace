@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "getPost"
+		},
+		{
+			"path": "newPost"
+		},
+		{
+			"path": "convertPost"
+		},
+		{
+			"path": "jackPolly"
+		}
+	],
+	"settings": {}
+}
