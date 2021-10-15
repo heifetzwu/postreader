@@ -40,7 +40,7 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
-	svc := dynamodb.New(sess)
+	svcDB := dynamodb.New(sess)
 	if os.Getenv(tableConst) == "" {
 		tablename = "posts"
 	} else {
@@ -61,9 +61,10 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 		ProjectionExpression:      expr.Projection(),
 		TableName:                 aws.String(tablename),
 	}
-	result, err := svc.Scan(params)
+	result, err := svcDB.Scan(params)
 	if err != nil {
 		log.Fatalf("Query API call failed: %s", err)
+		return
 	}
 
 	// fmt.Println("result.Items = %s", result.Items)
@@ -78,6 +79,7 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 
 	if err != nil {
 		log.Fatalf("Got error unmarshalling: %s", err)
+		return
 	}
 
 	fmt.Println("Id: ", item.Id)
@@ -88,14 +90,14 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 	fmt.Println()
 
 	// Polly
-	pollysvc := polly.New(sess)
+	svcPolly := polly.New(sess)
 	input := &polly.SynthesizeSpeechInput{
 		OutputFormat: aws.String("mp3"),
 		Text:         aws.String(item.Text),
 		VoiceId:      aws.String(item.Voice),
 	}
 
-	output, err := pollysvc.SynthesizeSpeech(input)
+	output, err := svcPolly.SynthesizeSpeech(input)
 	if err != nil {
 		fmt.Println("pollysvc.SynthesizeSpeech error")
 		fmt.Print(err.Error())
@@ -109,7 +111,8 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 	if err != nil {
 		fmt.Println("Got error creating " + mp3File + ":")
 		fmt.Print(err.Error())
-		os.Exit(1)
+		// os.Exit(1)
+		return
 	}
 
 	_, err = io.Copy(outFile, output.AudioStream)
@@ -119,11 +122,12 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 		os.Exit(1)
 	}
 	// upload s3
-	uploader := s3manager.NewUploader(sess)
+	svcS3uploader := s3manager.NewUploader(sess)
 	storeBucket := "jackpollywebsite4"
-	s3id := item.Id
+	// s3id := item.Id
+	s3id := mp3File
 
-	resultS3, err := uploader.Upload(&s3manager.UploadInput{
+	resultS3, err := svcS3uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(storeBucket),
 		Key:    aws.String(s3id),
 		Body:   outFile,
@@ -132,10 +136,46 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 	defer outFile.Close()
 	if err != nil {
 		fmt.Printf("failed to upload file, %v", err)
+		return
 	}
 
 	// fmt.Printf("file uploaded to, %s\n", aws.StringValue(resultS3.Location))
 	fmt.Printf("file uploaded to, %s\n", resultS3.Location)
+
+	// update dynamodb
+	status := "UPDATED"
+	url := resultS3.Location
+	inputDB := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":s": {
+				S: aws.String(status),
+			},
+			":u": {
+				S: aws.String(url),
+			},
+		},
+		ExpressionAttributeNames: map[string]*string{
+			"#sts":     aws.String("status"),
+			"#urladdr": aws.String("url"),
+		},
+		TableName: aws.String(tablename),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				S: aws.String(idstr),
+			},
+		},
+		ReturnValues: aws.String("UPDATED_NEW"),
+		// UpdateExpression: aws.String("set status = :s, url = :u"),
+		UpdateExpression: aws.String("set  #sts = :s,#urladdr = :u"),
+	}
+
+	resultUpdate, err := svcDB.UpdateItem(inputDB)
+	if err != nil {
+		log.Fatalf("Got error calling UpdateItem: %s", err)
+	}
+	fmt.Println("update result ", resultUpdate.Attributes)
+	// fmt.Println("Successfully updated '" + movieName + "' (" + movieYear + ") rating to " + movieRating)
+
 }
 
 func main() {
