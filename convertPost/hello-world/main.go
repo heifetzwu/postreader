@@ -103,24 +103,39 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 		fmt.Print(err.Error())
 		os.Exit(1)
 	}
-
+	fmt.Println("## output = ", output)
 	filename := item.Id
 	mp3File := filename + ".mp3"
 	outFile, err := os.Create("/tmp/" + mp3File)
-
+	// outFile, err := os.Create(mp3File)
 	if err != nil {
 		fmt.Println("Got error creating " + mp3File + ":")
 		fmt.Print(err.Error())
 		// os.Exit(1)
 		return
 	}
+	defer outFile.Close()
 
 	_, err = io.Copy(outFile, output.AudioStream)
+
+	fi, err := os.Stat("/tmp/" + mp3File)
+	size := fi.Size()
+	fmt.Println("## size = ", size)
+
+	file, err := os.Open("/tmp/" + mp3File)
+	if err != nil {
+		fmt.Printf("failed to open file %q, %v", mp3File, err)
+		return
+	}
+
+	// fmt.Println("file size", outFile.S )
 	if err != nil {
 		fmt.Println("Got error saving MP3:")
 		fmt.Print(err.Error())
-		os.Exit(1)
+		return
 	}
+	fmt.Println("## outFile = ", outFile)
+	fmt.Println("## *outFile = ", *outFile)
 	// upload s3
 	svcS3uploader := s3manager.NewUploader(sess)
 	storeBucket := "jackpollywebsite4"
@@ -130,10 +145,13 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 	resultS3, err := svcS3uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(storeBucket),
 		Key:    aws.String(s3id),
-		Body:   outFile,
+		// Body:        outFile,
+		Body: file,
+		// Body:        output.AudioStream,
+		ACL:         aws.String("public-read"),
+		ContentType: aws.String("audio/mpeg"),
 	})
 
-	defer outFile.Close()
 	if err != nil {
 		fmt.Printf("failed to upload file, %v", err)
 		return

@@ -12,7 +12,7 @@ Resources:
   ConvertPostFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://jackhugoweb/1efb894bcc906dfeb3f0d6322b08e163
+      CodeUri: s3://jackhugoweb/28f7af3f4bd6dd66cd49bf51d5d7f71d
       Handler: hello-world
       Runtime: go1.x
       Tracing: Active
