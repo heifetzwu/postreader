@@ -4,12 +4,6 @@
 			"path": "."
 		},
 		{
-			"path": "getPost"
-		},
-		{
-			"path": "newPost"
-		},
-		{
 			"path": "convertPost"
 		},
 		{

@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'getPost
+
+  Sample SAM Template for getPost
+
+  '
+Globals:
+  Function:
+    Timeout: 5
+Resources:
+  GetPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetPostFunction
+      Handler: hello-world
+      Runtime: go1.x
+      Tracing: Active
+      Events:
+        CatchAll:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: GET
+      Environment:
+        Variables:
+          POSTS_TABLE: posts
+      Policies:
+      - AWSLambdaBasicExecutionRole
+  NewPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: NewPostFunction
+      Handler: hello-world
+      Runtime: go1.x
+      Tracing: Active
+      Events:
+        CatchAll:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: POST
+      Environment:
+        Variables:
+          POSTS_TABLE: posts
+          SNS_TOPIC: arn:aws:sns:ap-southeast-1:019907068212:postReader
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      - AmazonDynamoDBFullAccess
+Outputs:
+  GetPostAPI:
+    Description: API Gateway endpoint URL for Prod environment for First Function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/
+  GetPostFunction:
+    Description: First Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - GetPostFunction
+      - Arn
+  GetPostFunctionIamRole:
+    Description: Implicit IAM Role created for Hello World function
+    Value:
+      Fn::GetAtt:
+      - GetPostFunctionRole
+      - Arn
+  NewPostAPI:
+    Description: API Gateway endpoint URL for Prod environment for First Function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/
+  NewPostFunction:
+    Description: First Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - NewPostFunction
+      - Arn
+  NewPostFunctionIamRole:
+    Description: Implicit IAM Role created for Hello World function
+    Value:
+      Fn::GetAtt:
+      - GetPostFunctionRole
+      - Arn

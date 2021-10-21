@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'getPost
+
+  Sample SAM Template for getPost
+
+  '
+Globals:
+  Function:
+    Timeout: 5
+Resources:
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: stage
+      Cors:
+        AllowMethods: '''POST,GET,OPTIONS'''
+        AllowHeaders: '''X-Forwarded-For'''
+        AllowOrigin: '''*'''
+        MaxAge: '''600'''
+  GetPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://jackhugoweb/edf38cefa8f11d6b5f36093302c21720
+      Handler: hello-world
+      Runtime: go1.x
+      Tracing: Active
+      Events:
+        CatchAll:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: GET
+            RestApiId:
+              Ref: ApiGatewayApi
+      Environment:
+        Variables:
+          POSTS_TABLE: posts
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      - AmazonDynamoDBFullAccess
+  NewPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://jackhugoweb/a5bed5f8a61fa07676fd56c089b5ef61
+      Handler: hello-world
+      Runtime: go1.x
+      Tracing: Active
+      Events:
+        CatchAll:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: POST
+            RestApiId:
+              Ref: ApiGatewayApi
+      Environment:
+        Variables:
+          POSTS_TABLE: posts
+          SNS_TOPIC: arn:aws:sns:ap-southeast-1:019907068212:postReader
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      - AmazonDynamoDBFullAccess
+      - AmazonSNSFullAccess
